@@ -223,3 +223,9 @@ variable "prepare_for_major_upgrade" {
   default     = false
   description = "Set this to true to change your parameter group to the default version, and to turn on the ability to upgrade major versions"
 }
+
+variable "custom_cidr_blocks" {
+  type        = list(string)
+  description = "A list of custom CIDR blocks to allow access to the RDS instance"
+  default     = []
+}

@@ -102,6 +102,27 @@ resource "aws_security_group" "rds-sg" {
   }
 }
 
+resource "aws_security_group" "custom-rds-sg" {
+  count       = length(var.custom_cidr_blocks) == 0 ? 0 : 1
+  name        = "${local.identifier}-custom-sg-group"
+  description = "Allow all inbound traffic from custom source"
+  vpc_id      = data.aws_vpc.selected.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = var.custom_cidr_blocks
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = var.custom_cidr_blocks
+  }
+}
+
 resource "aws_db_instance" "rds" {
   identifier                   = var.rds_name != "" ? var.rds_name : local.identifier
   final_snapshot_identifier    = var.replicate_source_db != null ? null : "${local.identifier}-finalsnapshot"
@@ -119,7 +140,7 @@ resource "aws_db_instance" "rds" {
   iops                         = var.db_iops
   storage_encrypted            = can(regex("sqlserver-ex", var.db_engine)) ? false : true
   db_subnet_group_name         = var.replicate_source_db != null ? null : aws_db_subnet_group.db_subnet[0].name
-  vpc_security_group_ids       = local.vpc_security_group_ids
+  vpc_security_group_ids       = length(var.custom_cidr_blocks) == 0 ? local.vpc_security_group_ids : concat(local.vpc_security_group_ids, [aws_security_group.custom-rds-sg[0].id])
   kms_key_id                   = (var.replicate_source_db != null) || (can(regex("sqlserver-ex", var.db_engine))) ? null : aws_kms_key.kms[0].arn
   multi_az                     = can(regex("sqlserver-web|sqlserver-ex", var.db_engine)) ? false : true
   copy_tags_to_snapshot        = true
